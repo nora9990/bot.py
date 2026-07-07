@@ -25,7 +25,6 @@ FOODS = [
 LAST_FILE = "last_time.txt"
 
 
-# ⏱ زمان‌بندی دقیق
 def should_send():
     now = int(time.time())
 
@@ -35,7 +34,7 @@ def should_send():
     with open(LAST_FILE, "r") as f:
         last = int(f.read().strip())
 
-    return now - last >= 3600  # هر 1 ساعت
+    return now - last >= 3600
 
 
 def save_time():
@@ -43,7 +42,6 @@ def save_time():
         f.write(str(int(time.time())))
 
 
-# 📷 ساخت عکس کتاب فانتزی
 def generate_book(food):
     prompt = f"""
 Persian food {food},
@@ -56,18 +54,60 @@ warm colors,
 vintage cooking book,
 beautiful layout
 """
-    url = IMAGE_API + requests.utils.quote(prompt)
-    return url
+    return IMAGE_API + requests.utils.quote(prompt)
 
 
-# 📷 عکس واقعی غذا
 def generate_real(food):
-    prompt = f"{food} Persian food realistic, high quality, delicious, professional photography"
-    url = IMAGE_API + requests.utils.quote(prompt)
-    return url
+    prompt = f"{food} Persian food realistic, high quality, professional food photography"
+    return IMAGE_API + requests.utils.quote(prompt)
 
 
-# 📝 کپشن فارسی واقعی
+def send_photo_file(image_url, caption):
+    try:
+        print("⬇️ دانلود عکس...")
+
+        img = requests.get(
+            image_url,
+            timeout=60
+        )
+
+        if img.status_code != 200:
+            print("❌ عکس دانلود نشد")
+            return False
+
+        print("📤 ارسال به تلگرام...")
+
+        files = {
+            "photo": (
+                "food.jpg",
+                img.content,
+                "image/jpeg"
+            )
+        }
+
+        response = requests.post(
+            SEND_PHOTO,
+            data={
+                "chat_id": CHANNEL,
+                "caption": caption
+            },
+            files=files,
+            timeout=60
+        )
+
+        if response.status_code == 200:
+            print("✅ عکس ارسال شد")
+            return True
+
+        print("⚠️ خطای تلگرام:")
+        print(response.text)
+        return False
+
+    except Exception as e:
+        print("❌ خطا در ارسال عکس:", e)
+        return False
+
+
 def get_caption(food):
     captions = {
         "قورمه سبزی": """🍲 قورمه سبزی
@@ -185,64 +225,46 @@ def get_caption(food):
     return captions.get(food, f"{food}\n\n✨ @princessnature9")
 
 
-# 🚀 ارسال
 def send_post():
     food = random.choice(FOODS)
 
     print(f"🎯 ارسال: {food}")
 
-    book_img = generate_book(food)
     real_img = generate_real(food)
-    caption = get_caption(food)
+    book_img = generate_book(food)
 
-    try:
-        # اول عکس واقعی
-        print("📸 ارسال عکس واقعی...")
-        res1 = requests.post(SEND_PHOTO, data={
-            "chat_id": CHANNEL,
-            "photo": real_img,
-            "caption": f"🍽 غذای امروز: {food}\n\n✨ @princessnature9"
-        }, timeout=20)
+    ok1 = send_photo_file(
+        real_img,
+        f"🍽 غذای امروز: {food}\n\n✨ @princessnature9"
+    )
 
-        if res1.status_code == 200:
-            print("✅ عکس واقعی ارسال شد")
-        else:
-            print(f"⚠️ خطا: {res1.text[:100]}")
+    time.sleep(5)
 
-        time.sleep(3)
+    ok2 = send_photo_file(
+        book_img,
+        get_caption(food)
+    )
 
-        # بعد کتاب فانتزی
-        print("📖 ارسال کتاب فانتزی...")
-        res2 = requests.post(SEND_PHOTO, data={
-            "chat_id": CHANNEL,
-            "photo": book_img,
-            "caption": caption
-        }, timeout=20)
-
-        if res2.status_code == 200:
-            print("✅ کتاب فانتزی ارسال شد")
-        else:
-            print(f"⚠️ خطا: {res2.text[:100]}")
-
+    if ok1 and ok2:
         save_time()
-        print(f"✅ پست در {datetime.now().strftime('%H:%M')} تکمیل شد")
+        print(f"✅ پست کامل شد {datetime.now().strftime('%H:%M')}")
+    else:
+        print("⚠️ ارسال کامل نشد")
 
-    except Exception as e:
-        print(f"❌ خطا: {e}")
 
-
-# 🔁 حلقه اصلی
 print("👑 ربات آشپزی پرنسسی فعال شد...")
 print(f"📢 کانال: {CHANNEL}")
-print("⏰ هر ۱ ساعت: ۲ عکس (واقعی + فانتزی)")
+print("⏰ هر ۱ ساعت: ۲ عکس (واقعی + کتاب آشپزی)")
 print(f"🍽 {len(FOODS)} غذای ایرانی")
-print("=" * 50)
+print("=" * 40)
 
 while True:
     try:
         if should_send():
             send_post()
+
         time.sleep(60)
+
     except Exception as e:
-        print(f"❌ خطا در حلقه اصلی: {e}")
+        print("❌ خطای اصلی:", e)
         time.sleep(30)
