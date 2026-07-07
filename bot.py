@@ -4,7 +4,6 @@ import random
 import os
 from datetime import datetime
 
-# توکن مستقیم در کد
 TOKEN = "8933933120:AAGO1Bn_zy_gWw3BriWdlajr5Er4Ks-0y0A"
 
 if not TOKEN:
@@ -19,12 +18,100 @@ IMAGE_API = "https://image.pollinations.ai/prompt/"
 FOODS = [
     "قورمه سبزی",
     "قیمه",
-    "کشک بادمجان",
+    "قیمه بادمجان",
+    "فسنجان",
+    "خورش کرفس",
+    "خورش بادمجان",
+    "خورش آلو",
+    "خورش خلال کرمانشاهی",
     "آبگوشت",
-    "کباب ایرانی",
-    "آش رشته",
+    "دیزی سنگی",
+    "کباب کوبیده",
+    "کباب برگ",
+    "جوجه کباب",
+    "کباب سلطانی",
+    "کباب ترش",
+    "کباب بختیاری",
     "زرشک پلو با مرغ",
-    "دیزی"
+    "باقالی پلو با ماهیچه",
+    "باقالی پلو با مرغ",
+    "سبزی پلو با ماهی",
+    "ته چین مرغ",
+    "ته چین گوشت",
+    "لوبیا پلو",
+    "عدس پلو",
+    "کلم پلو شیرازی",
+    "استانبولی پلو",
+    "مرصع پلو",
+    "شیرین پلو",
+    "آلبالو پلو",
+    "رشته پلو",
+    "دلمه برگ مو",
+    "کشک بادمجان",
+    "میرزا قاسمی",
+    "یتیمچه",
+    "کوکو سبزی",
+    "کوکو سیب زمینی",
+    "نرگسی اسفناج",
+    "آش رشته",
+    "آش دوغ",
+    "آش شله قلمکار",
+    "آش جو",
+    "آش انار",
+    "آش ترخینه",
+    "حلیم",
+    "کله پاچه",
+    "شامی کباب",
+    "کتلت",
+    "کوفته تبریزی",
+    "کوفته ریزه",
+    "بریانی اصفهان",
+    "چلو گوشت",
+    "چلو مرغ زعفرانی",
+    "مرغ شکم پر",
+    "مرغ ترش",
+    "قلیه ماهی",
+    "قلیه میگو",
+    "میگو پلو",
+    "فلافل جنوبی",
+    "سمبوسه",
+    "حلیم بادمجان",
+    "کال جوش",
+    "اشکنه",
+    "کاچی",
+    "شله زرد",
+    "حلوا",
+    "رنگینک",
+    "فرنی",
+    "خوراک لوبیا",
+    "خوراک مرغ",
+    "خوراک بادمجان",
+    "خوراک جگر",
+    "جگر کبابی",
+    "ماهی شکم پر",
+    "هواری میگو",
+    "کلمبا",
+    "آش عباسعلی",
+    "خورش ریواس",
+    "خورش به",
+    "خورش ماست",
+    "خورش سیب",
+    "خورش نخود",
+    "خوراک زبان",
+    "سیرابی",
+    "آبگوشت بزباش",
+    "آبگوشت کشک",
+    "آبگوشت لپه",
+    "املت ایرانی",
+    "باقالی قاتق",
+    "ترش تره",
+    "واویشکا",
+    "اناربیج",
+    "کدو بره",
+    "مالابیج",
+    "چغرتمه",
+    "نان و پنیر و سبزی",
+    "سینی مزه ایرانی"
 ]
 
 LAST_TIME_FILE = "last_time.txt"
@@ -42,7 +129,7 @@ def should_send():
         return True
 
     with open(LAST_TIME_FILE, "r") as f:
-        last = int(f.read())
+        last = int(f.read().strip())
 
     return now - last >= 3600
 
@@ -53,7 +140,7 @@ def save_time():
 
 
 # -----------------------------
-# جلوگیری از غذای تکراری
+# انتخاب غذا بدون تکرار
 # -----------------------------
 
 def get_food():
@@ -63,8 +150,12 @@ def get_food():
         with open(LAST_FOOD_FILE, "r") as f:
             old = f.read().strip()
 
-    foods = [x for x in FOODS if x != old]
-    food = random.choice(foods)
+    choices = [x for x in FOODS if x != old]
+
+    if not choices:
+        choices = FOODS
+
+    food = random.choice(choices)
 
     with open(LAST_FOOD_FILE, "w") as f:
         f.write(food)
@@ -78,169 +169,37 @@ def get_food():
 
 def generate_real(food):
     seed = random.randint(100000, 999999)
+
     prompt = f"""
-{food} Persian cuisine,
-realistic professional food photography,
-fresh ingredients,
-beautiful presentation,
-restaurant quality,
-unique image,
-seed {seed}
+A real professional photo of exactly {food}.
+Persian traditional cuisine.
+Only {food} dish.
+Authentic Iranian food.
+Restaurant photography.
+High quality.
+Beautiful presentation.
+No other dishes.
+Seed {seed}
 """
+
     return IMAGE_API + requests.utils.quote(prompt)
 
 
 def generate_book(food):
     seed = random.randint(100000, 999999)
+
     prompt = f"""
-Persian recipe {food},
-fantasy handmade cookbook page,
-open cooking book,
-watercolor illustration,
-ingredients icons,
-step by step drawings,
-beautiful vintage style,
-unique image,
-seed {seed}
+Fantasy Persian cookbook page about {food}.
+The recipe title is {food}.
+Open cookbook.
+Watercolor illustration.
+Ingredients and cooking steps.
+Traditional Iranian style.
+Beautiful vintage design.
+Seed {seed}
 """
+
     return IMAGE_API + requests.utils.quote(prompt)
-
-
-# -----------------------------
-# کپشن
-# -----------------------------
-
-def get_caption(food):
-    captions = {
-        "قورمه سبزی": """✨ دستور خوشمزه امروز
-
-🍲 قورمه سبزی
-
-مواد لازم:
-گوشت، سبزی قورمه، لوبیا قرمز، لیمو عمانی
-
-طرز تهیه:
-۱. گوشت رو تفت بده
-۲. سبزی اضافه کن
-۳. لوبیا و آب رو اضافه کن
-۴. بذار آروم جا بیفته
-
-💡 نکته: لیمو عمانی رو آخر اضافه کن تلخ نشه 😍
-
-✨ @princessnature9""",
-
-        "قیمه": """✨ دستور خوشمزه امروز
-
-🍛 قیمه
-
-مواد لازم:
-گوشت، لپه، رب گوجه، سیب زمینی
-
-طرز تهیه:
-۱. گوشت و لپه بپز
-۲. رب اضافه کن
-۳. آخر سیب زمینی سرخ‌شده
-
-💡 نکته: دارچین عطرشو فوق‌العاده میکنه ✨
-
-✨ @princessnature9""",
-
-        "کشک بادمجان": """✨ دستور خوشمزه امروز
-
-🍆 کشک بادمجان
-
-مواد لازم:
-بادمجان، کشک، سیر، نعناع
-
-طرز تهیه:
-۱. بادمجان سرخ کن
-۲. له کن
-۳. کشک و سیر اضافه کن
-
-💡 نکته: نعناع داغ یادت نره 😋
-
-✨ @princessnature9""",
-
-        "آبگوشت": """✨ دستور خوشمزه امروز
-
-🥘 آبگوشت
-
-مواد لازم:
-گوشت، نخود، سیب زمینی، گوجه
-
-طرز تهیه:
-۱. همه مواد رو با هم بپز
-۲. تا جا بیفته
-
-💡 نکته: با نون سنگک یه چیز دیگه‌ست 🤤
-
-✨ @princessnature9""",
-
-        "کباب ایرانی": """✨ دستور خوشمزه امروز
-
-🍢 کباب کوبیده
-
-مواد لازم:
-گوشت چرخ‌کرده، پیاز، نمک، زعفران
-
-طرز تهیه:
-۱. مواد رو مخلوط کن
-۲. به سیخ بزن
-۳. روی آتش کباب کن
-
-💡 نکته: زغال طعم اصلی رو میده 🔥
-
-✨ @princessnature9""",
-
-        "آش رشته": """✨ دستور خوشمزه امروز
-
-🥣 آش رشته
-
-مواد لازم:
-گوشت، حبوبات، سبزی آش، رشته، آرد
-
-طرز تهیه:
-۱. حبوبات رو بپز
-۲. سبزی و رشته اضافه کن
-۳. بپز تا غلیظ بشه
-
-💡 نکته: با کشک و نعناع داغ سرو کن 😋
-
-✨ @princessnature9""",
-
-        "زرشک پلو با مرغ": """✨ دستور خوشمزه امروز
-
-🍗 زرشک پلو با مرغ
-
-مواد لازم:
-برنج، مرغ، زرشک، زعفران
-
-طرز تهیه:
-۱. مرغ رو با پیاز و زعفران بپز
-۲. برنج رو آبکش کن
-۳. زرشک رو اضافه کن
-۴. دم کن
-
-💡 نکته: زرشک رو کمی شکر بپاشید تا ترشیش کم بشه 🌸
-
-✨ @princessnature9""",
-
-        "دیزی": """✨ دستور خوشمزه امروز
-
-🍲 دیزی (آبگوشت سنگی)
-
-مواد لازم:
-گوشت، نخود، لوبیا، سیب زمینی، گوجه
-
-طرز تهیه:
-۱. همه مواد رو در دیزی بچین
-۲. بپز تا جا بیفته
-
-💡 نکته: با گوشت کوهی خوشمزه‌تر میشه 🏔️
-
-✨ @princessnature9"""
-    }
-    return captions.get(food, f"🍲 {food}\n\n✨ @princessnature9")
 
 
 # -----------------------------
@@ -250,6 +209,7 @@ def get_caption(food):
 def send_photo(image_url, caption):
     try:
         print("⬇️ دریافت عکس...")
+
         img = requests.get(image_url, timeout=60)
 
         if img.status_code != 200:
@@ -257,17 +217,20 @@ def send_photo(image_url, caption):
             return False
 
         content = img.headers.get("Content-Type", "")
-        print("نوع فایل:", content)
 
         if "image" not in content:
             print("❌ خروجی تصویر نیست")
             return False
 
         files = {
-            "photo": ("food.jpg", img.content, "image/jpeg")
+            "photo": (
+                "food.jpg",
+                img.content,
+                "image/jpeg"
+            )
         }
 
-        result = requests.post(
+        response = requests.post(
             SEND_PHOTO,
             data={
                 "chat_id": CHANNEL,
@@ -277,16 +240,44 @@ def send_photo(image_url, caption):
             timeout=60
         )
 
-        if result.status_code == 200:
+        if response.status_code == 200:
             print("✅ عکس ارسال شد")
             return True
         else:
-            print(result.text)
+            print("❌ خطای تلگرام:")
+            print(response.text)
             return False
 
     except Exception as e:
-        print("خطای عکس:", e)
+        print("❌ خطای ارسال عکس:", e)
         return False
+
+
+# -----------------------------
+# متن پست
+# -----------------------------
+
+def get_caption(food):
+    return f"""
+✨ دستور خوشمزه امروز
+
+🍲 {food}
+
+مواد لازم:
+مواد تازه، ادویه‌های خوش‌عطر و ترکیبات سنتی ایرانی
+
+طرز تهیه:
+۱. مواد اولیه را آماده کنید.
+۲. مواد را با حرارت مناسب بپزید.
+۳. اجازه دهید غذا کاملاً جا بیفتد.
+
+💡 نکته:
+آشپزی با حوصله، طعم غذا را بهتر می‌کند 😍
+
+نوش جان 🌿
+
+✨ @princessnature9
+"""
 
 
 # -----------------------------
@@ -295,24 +286,27 @@ def send_photo(image_url, caption):
 
 def send_post():
     food = get_food()
+
     print(f"🎯 غذا: {food}")
 
-    real = generate_real(food)
-    book = generate_book(food)
+    real_image = generate_real(food)
+    book_image = generate_book(food)
 
     first = send_photo(
-        real,
-        f"""🍽 غذای امروز:
+        real_image,
+        f"""
+🍽 غذای امروز:
 
 {food}
 
-✨ @princessnature9"""
+✨ @princessnature9
+"""
     )
 
     time.sleep(5)
 
     second = send_photo(
-        book,
+        book_image,
         get_caption(food)
     )
 
@@ -324,19 +318,22 @@ def send_post():
 
 
 # -----------------------------
-# شروع
+# شروع ربات
 # -----------------------------
 
 print("👑 ربات آشپزی پرنسسی فعال شد")
 print(f"📢 کانال: {CHANNEL}")
 print("⏰ هر ساعت دو عکس جدید")
+print(f"🍽 تعداد غذاها: {len(FOODS)}")
 print("=" * 40)
 
 while True:
     try:
         if should_send():
             send_post()
+
         time.sleep(60)
+
     except Exception as e:
-        print("خطای اصلی:", e)
+        print("❌ خطای اصلی:", e)
         time.sleep(30)
