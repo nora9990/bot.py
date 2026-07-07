@@ -4,7 +4,12 @@ import random
 import os
 from datetime import datetime
 
+# توکن مستقیم در کد
 TOKEN = "8933933120:AAGO1Bn_zy_gWw3BriWdlajr5Er4Ks-0y0A"
+
+if not TOKEN:
+    raise Exception("TOKEN variable not found")
+
 CHANNEL = "@princessnature9"
 
 SEND_PHOTO = f"https://api.telegram.org/bot{TOKEN}/sendPhoto"
@@ -22,95 +27,94 @@ FOODS = [
     "دیزی"
 ]
 
-LAST_FILE = "last_time.txt"
+LAST_TIME_FILE = "last_time.txt"
+LAST_FOOD_FILE = "last_food.txt"
 
+
+# -----------------------------
+# زمان ارسال
+# -----------------------------
 
 def should_send():
     now = int(time.time())
 
-    if not os.path.exists(LAST_FILE):
+    if not os.path.exists(LAST_TIME_FILE):
         return True
 
-    with open(LAST_FILE, "r") as f:
-        last = int(f.read().strip())
+    with open(LAST_TIME_FILE, "r") as f:
+        last = int(f.read())
 
     return now - last >= 3600
 
 
 def save_time():
-    with open(LAST_FILE, "w") as f:
+    with open(LAST_TIME_FILE, "w") as f:
         f.write(str(int(time.time())))
 
 
-def generate_book(food):
+# -----------------------------
+# جلوگیری از غذای تکراری
+# -----------------------------
+
+def get_food():
+    old = ""
+
+    if os.path.exists(LAST_FOOD_FILE):
+        with open(LAST_FOOD_FILE, "r") as f:
+            old = f.read().strip()
+
+    foods = [x for x in FOODS if x != old]
+    food = random.choice(foods)
+
+    with open(LAST_FOOD_FILE, "w") as f:
+        f.write(food)
+
+    return food
+
+
+# -----------------------------
+# ساخت عکس
+# -----------------------------
+
+def generate_real(food):
+    seed = random.randint(100000, 999999)
     prompt = f"""
-Persian food {food},
-fantasy handmade cookbook page,
-open book layout,
-watercolor illustration,
-ingredients icons,
-step by step drawings,
-warm colors,
-vintage cooking book,
-beautiful layout
+{food} Persian cuisine,
+realistic professional food photography,
+fresh ingredients,
+beautiful presentation,
+restaurant quality,
+unique image,
+seed {seed}
 """
     return IMAGE_API + requests.utils.quote(prompt)
 
 
-def generate_real(food):
-    prompt = f"{food} Persian food realistic, high quality, professional food photography"
+def generate_book(food):
+    seed = random.randint(100000, 999999)
+    prompt = f"""
+Persian recipe {food},
+fantasy handmade cookbook page,
+open cooking book,
+watercolor illustration,
+ingredients icons,
+step by step drawings,
+beautiful vintage style,
+unique image,
+seed {seed}
+"""
     return IMAGE_API + requests.utils.quote(prompt)
 
 
-def send_photo_file(image_url, caption):
-    try:
-        print("⬇️ دانلود عکس...")
-
-        img = requests.get(
-            image_url,
-            timeout=60
-        )
-
-        if img.status_code != 200:
-            print("❌ عکس دانلود نشد")
-            return False
-
-        print("📤 ارسال به تلگرام...")
-
-        files = {
-            "photo": (
-                "food.jpg",
-                img.content,
-                "image/jpeg"
-            )
-        }
-
-        response = requests.post(
-            SEND_PHOTO,
-            data={
-                "chat_id": CHANNEL,
-                "caption": caption
-            },
-            files=files,
-            timeout=60
-        )
-
-        if response.status_code == 200:
-            print("✅ عکس ارسال شد")
-            return True
-
-        print("⚠️ خطای تلگرام:")
-        print(response.text)
-        return False
-
-    except Exception as e:
-        print("❌ خطا در ارسال عکس:", e)
-        return False
-
+# -----------------------------
+# کپشن
+# -----------------------------
 
 def get_caption(food):
     captions = {
-        "قورمه سبزی": """🍲 قورمه سبزی
+        "قورمه سبزی": """✨ دستور خوشمزه امروز
+
+🍲 قورمه سبزی
 
 مواد لازم:
 گوشت، سبزی قورمه، لوبیا قرمز، لیمو عمانی
@@ -125,7 +129,9 @@ def get_caption(food):
 
 ✨ @princessnature9""",
 
-        "قیمه": """🍛 قیمه
+        "قیمه": """✨ دستور خوشمزه امروز
+
+🍛 قیمه
 
 مواد لازم:
 گوشت، لپه، رب گوجه، سیب زمینی
@@ -139,7 +145,9 @@ def get_caption(food):
 
 ✨ @princessnature9""",
 
-        "کشک بادمجان": """🍆 کشک بادمجان
+        "کشک بادمجان": """✨ دستور خوشمزه امروز
+
+🍆 کشک بادمجان
 
 مواد لازم:
 بادمجان، کشک، سیر، نعناع
@@ -153,7 +161,9 @@ def get_caption(food):
 
 ✨ @princessnature9""",
 
-        "آبگوشت": """🥘 آبگوشت
+        "آبگوشت": """✨ دستور خوشمزه امروز
+
+🥘 آبگوشت
 
 مواد لازم:
 گوشت، نخود، سیب زمینی، گوجه
@@ -166,7 +176,9 @@ def get_caption(food):
 
 ✨ @princessnature9""",
 
-        "کباب ایرانی": """🍢 کباب کوبیده
+        "کباب ایرانی": """✨ دستور خوشمزه امروز
+
+🍢 کباب کوبیده
 
 مواد لازم:
 گوشت چرخ‌کرده، پیاز، نمک، زعفران
@@ -180,7 +192,9 @@ def get_caption(food):
 
 ✨ @princessnature9""",
 
-        "آش رشته": """🥣 آش رشته
+        "آش رشته": """✨ دستور خوشمزه امروز
+
+🥣 آش رشته
 
 مواد لازم:
 گوشت، حبوبات، سبزی آش، رشته، آرد
@@ -194,7 +208,9 @@ def get_caption(food):
 
 ✨ @princessnature9""",
 
-        "زرشک پلو با مرغ": """🍗 زرشک پلو با مرغ
+        "زرشک پلو با مرغ": """✨ دستور خوشمزه امروز
+
+🍗 زرشک پلو با مرغ
 
 مواد لازم:
 برنج، مرغ، زرشک، زعفران
@@ -209,7 +225,9 @@ def get_caption(food):
 
 ✨ @princessnature9""",
 
-        "دیزی": """🍲 دیزی (آبگوشت سنگی)
+        "دیزی": """✨ دستور خوشمزه امروز
+
+🍲 دیزی (آبگوشت سنگی)
 
 مواد لازم:
 گوشت، نخود، لوبیا، سیب زمینی، گوجه
@@ -222,49 +240,103 @@ def get_caption(food):
 
 ✨ @princessnature9"""
     }
-    return captions.get(food, f"{food}\n\n✨ @princessnature9")
+    return captions.get(food, f"🍲 {food}\n\n✨ @princessnature9")
 
+
+# -----------------------------
+# ارسال عکس
+# -----------------------------
+
+def send_photo(image_url, caption):
+    try:
+        print("⬇️ دریافت عکس...")
+        img = requests.get(image_url, timeout=60)
+
+        if img.status_code != 200:
+            print("❌ عکس دریافت نشد")
+            return False
+
+        content = img.headers.get("Content-Type", "")
+        print("نوع فایل:", content)
+
+        if "image" not in content:
+            print("❌ خروجی تصویر نیست")
+            return False
+
+        files = {
+            "photo": ("food.jpg", img.content, "image/jpeg")
+        }
+
+        result = requests.post(
+            SEND_PHOTO,
+            data={
+                "chat_id": CHANNEL,
+                "caption": caption
+            },
+            files=files,
+            timeout=60
+        )
+
+        if result.status_code == 200:
+            print("✅ عکس ارسال شد")
+            return True
+        else:
+            print(result.text)
+            return False
+
+    except Exception as e:
+        print("خطای عکس:", e)
+        return False
+
+
+# -----------------------------
+# ارسال پست
+# -----------------------------
 
 def send_post():
-    food = random.choice(FOODS)
+    food = get_food()
+    print(f"🎯 غذا: {food}")
 
-    print(f"🎯 ارسال: {food}")
+    real = generate_real(food)
+    book = generate_book(food)
 
-    real_img = generate_real(food)
-    book_img = generate_book(food)
+    first = send_photo(
+        real,
+        f"""🍽 غذای امروز:
 
-    ok1 = send_photo_file(
-        real_img,
-        f"🍽 غذای امروز: {food}\n\n✨ @princessnature9"
+{food}
+
+✨ @princessnature9"""
     )
 
     time.sleep(5)
 
-    ok2 = send_photo_file(
-        book_img,
+    second = send_photo(
+        book,
         get_caption(food)
     )
 
-    if ok1 and ok2:
+    if first and second:
         save_time()
         print(f"✅ پست کامل شد {datetime.now().strftime('%H:%M')}")
     else:
-        print("⚠️ ارسال کامل نشد")
+        print("⚠️ پست کامل ارسال نشد")
 
 
-print("👑 ربات آشپزی پرنسسی فعال شد...")
+# -----------------------------
+# شروع
+# -----------------------------
+
+print("👑 ربات آشپزی پرنسسی فعال شد")
 print(f"📢 کانال: {CHANNEL}")
-print("⏰ هر ۱ ساعت: ۲ عکس (واقعی + کتاب آشپزی)")
-print(f"🍽 {len(FOODS)} غذای ایرانی")
+print("⏰ هر ساعت دو عکس جدید")
 print("=" * 40)
 
 while True:
     try:
         if should_send():
             send_post()
-
         time.sleep(60)
-
     except Exception as e:
-        print("❌ خطای اصلی:", e)
+        print("خطای اصلی:", e)
         time.sleep(30)
