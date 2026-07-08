@@ -5,14 +5,14 @@ import os
 from datetime import datetime
 
 # ============================================
-# تنظیمات اصلی - با کلید شما
+# تنظیمات اصلی
 # ============================================
 TELEGRAM_TOKEN = "8933933120:AAGO1Bn_zy_gWw3BriWdlajr5Er4Ks-0y0A"
 CHANNEL = "@princessnature9"
 
-# کلید Gemini شما (که الان درسته!)
+# کلید Gemini
 GEMINI_API_KEY = "AQ.Ab8RN6L-UALkIkX1sBNin-izfVDAHNzWfOVLIKOv8Re647Qb9Q"
-GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent"
+GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
 
 # ============================================
 # تنظیمات تلگرام
@@ -26,7 +26,7 @@ LAST_CHAPTER = "chapter.txt"
 STORY_HISTORY = "story_history.txt"
 
 # ============================================
-# شخصیت‌های ثابت داستان
+# شخصیت‌های ثابت
 # ============================================
 CHARACTERS = """
 شخصیت‌های اصلی داستان (اینها همیشه ثابت هستند):
@@ -74,27 +74,33 @@ CHARACTERS = """
 """
 
 # ============================================
-# تولید داستان با Gemini (کاملاً رایگان)
+# تولید داستان با Gemini 2.0 Flash
 # ============================================
-def generate_story_with_gemini(chapter, previous_story=""):
-    """تولید داستان جدید با Gemini API - رایگان"""
+def generate_story_with_gemini(chapter, previous_story="", attempt=1):
+    """تولید داستان جدید با Gemini 2.0 Flash - با بررسی تعداد خطوط"""
+    
+    if attempt > 3:
+        print("❌ بیش از ۳ بار تلاش، استفاده از داستان پشتیبان...")
+        return None
     
     system_prompt = f"""تو یک نویسنده حرفه‌ای داستان‌های فانتزی و حماسی هستی.
 داستان "جنگل نقره‌ای" را می‌نویسی که یک حماسه فانتزی است.
 
 {CHARACTERS}
 
-قوانین مهم داستان‌نویسی:
-۱. هر فصل دقیقاً ۱۰ تا ۱۵ خط داشته باشد
-۲. شخصیت‌ها همیشه طبق توضیحات بالا ثابت باشند
-۳. داستان ادامه‌دار و جذاب باشد
-۴. هر فصل یک اتفاق جدید و هیجان‌انگیز داشته باشد
-۵. سبک نوشتاری شاعرانه، حماسی و جذاب باشد
-۶. داستان در جنگل نقره‌ای جریان دارد
-۷. پرنسس لیا شخصیت اصلی است
-۸. هر فصل جدید ادامه طبیعی فصل قبل است
-۹. داستان بی‌پایان است و هر فصل ماجرای جدیدی دارد
-۱۰. از کلمات زیبا و توصیفی استفاده کن
+قوانین سختگیرانه داستان‌نویسی (هرگز نقض نکن!):
+۱. هر فصل حتماً بین ۱۰ تا ۱۵ خط کامل داشته باشد
+۲. اگر کمتر از ۱۰ خط بنویسی، پاسخ نامعتبر است
+۳. هر خط حداقل یک جمله کامل داشته باشد
+۴. داستان ادامه مستقیم فصل قبل باشد (ادامه طبیعی)
+۵. شخصیت‌ها هرگز ظاهر یا نامشان تغییر نکند
+۶. پرنسس لیا همیشه شخصیت اصلی باشد
+۷. پایان فصل هیجان‌انگیز باشد تا خواننده منتظر فصل بعد بماند
+۸. فقط متن داستان را بنویس و هیچ توضیح اضافه‌ای نده
+۹. هر خط جدید با Enter جدا شود
+۱۰. شماره فصل را ننویس، فقط عنوان بنویس
+۱۱. از کلمات زیبا و توصیفی استفاده کن
+۱۲. فضای داستان جادویی و رویایی باشد
 """
     
     user_prompt = f"""فصل {chapter} داستان جنگل نقره‌ای را بنویس.
@@ -102,15 +108,16 @@ def generate_story_with_gemini(chapter, previous_story=""):
 داستان از جایی شروع می‌شود که فصل قبل تمام شد.
 یک اتفاق جدید و هیجان‌انگیز در این فصل رخ می‌دهد.
 متن بین ۱۰ تا ۱۵ خط باشد.
+هر خط یک جمله کامل باشد.
 فصل را با عنوانی زیبا شروع کن.
+پایان فصل هیجان‌انگیز باشد.
 
 فقط متن داستان را بنویس، هیچ توضیح اضافی نده.
 """
     
     if previous_story:
-        user_prompt += f"\n\nداستان قبلی: {previous_story[:200]}..."
+        user_prompt += f"\n\nادامه داستان از اینجا:\n{previous_story[:1200]}..."
     
-    # فرمت درخواست Gemini
     data = {
         "contents": [{
             "parts": [{
@@ -118,19 +125,19 @@ def generate_story_with_gemini(chapter, previous_story=""):
             }]
         }],
         "generationConfig": {
-            "temperature": 0.85,
-            "maxOutputTokens": 600,
+            "temperature": 0.9,
+            "maxOutputTokens": 800,
             "topP": 0.95
         }
     }
     
     try:
-        print("🤖 درخواست به Gemini (رایگان)...")
+        print(f"🤖 درخواست به Gemini 2.0 Flash (تلاش {attempt})...")
         response = requests.post(
             GEMINI_URL,
             headers={
                 "Content-Type": "application/json",
-                "X-goog-api-key": GEMINI_API_KEY  # کلید شما اینجا
+                "X-goog-api-key": GEMINI_API_KEY
             },
             json=data,
             timeout=90
@@ -139,123 +146,149 @@ def generate_story_with_gemini(chapter, previous_story=""):
         if response.status_code == 200:
             result = response.json()
             story = result["candidates"][0]["content"]["parts"][0]["text"]
-            print(f"✅ داستان تولید شد ({len(story)} کاراکتر)")
+            
+            # بررسی تعداد خطوط
+            lines = [x for x in story.split("\n") if x.strip()]
+            line_count = len(lines)
+            
+            print(f"📊 تعداد خطوط: {line_count}")
+            
+            if line_count < 10:
+                print(f"⚠️ داستان کوتاه بود ({line_count} خط)، درخواست مجدد...")
+                return generate_story_with_gemini(chapter, previous_story, attempt + 1)
+            
+            if line_count > 15:
+                print(f"⚠️ داستان بلند بود ({line_count} خط)، خلاصه می‌شود...")
+                story = "\n".join(lines[:15])
+            
+            print(f"✅ داستان تولید شد ({len(story)} کاراکتر، {line_count} خط)")
+            print(f"📝 شروع متن: {story[:80]}...")
             return story
         else:
             print(f"❌ خطا در Gemini: {response.status_code}")
-            print(f"پیام: {response.text}")
-            
-            if response.status_code == 429:
-                print("⚠️ محدودیت روزانه Gemini تموم شده!")
-                return None
-            
+            print(f"📄 پاسخ: {response.text}")
             return None
             
     except Exception as e:
-        print(f"❌ خطا: {e}")
+        print(f"❌ خطای ارتباط: {e}")
         return None
 
 # ============================================
-# تولید تصویر بر اساس داستان
+# تولید تصویر با پرامپت جدید
 # ============================================
 def generate_image_from_story(story_text):
-    """تولید تصویر بر اساس متن داستان"""
+    """تولید تصویر با پرامپت جدید"""
     
-    story_summary = story_text[:200] if len(story_text) > 200 else story_text
+    # صحنه ثابت برای ادامه داستان
+    scene = "Princess Lia and Prince Arian inside an enchanted silver forest during a magical adventure."
     
     prompt = f"""
-========================================================================
-شخصیت‌ها - اینها را دقیقاً به همین شکل رسم کن:
-========================================================================
+Beautiful elven princess Lia, long silver hair, emerald green eyes,
+white royal elven dress with golden embroidery,
+golden leaf crown.
 
-پرنسس لیا (شخصیت اصلی):
-- موهای نقره‌ای بلند تا کمر
-- چشم‌های سبز زمردی
-- لباس سفید الف‌ها با گلدوزی طلایی
-- تاج برگ طلایی روی سر
-- گوش‌های باریک الف
-- هرگز موها، چشم‌ها یا لباسش را تغییر نده
+Prince Arian, blond hair, silver armor, green cape.
 
-پرنس آرین:
-- موهای بلوند کوتاه
-- زره نقره‌ای با نگین‌های آبی
-- شنل سبز
-- چشم‌های آبی
+{scene}
 
-========================================================================
-صحنه داستان:
-========================================================================
-{story_summary}
-
-========================================================================
-سبک تصویر:
-========================================================================
-- تصویرسازی کتاب داستان فانتزی
-- استودیو جیبلی
-- سبک دیزنی
-- نورپردازی سینمایی
-- جنگل جادویی کهن
-- جزئیات بالا
-- رنگ‌های غنی و زنده
-- فضای رویایی
-
-========================================================================
-قوانین مهم (هرگز نقض نکن!):
-========================================================================
-- پرنسس لیا: موهای نقره‌ای، چشم‌های سبز، لباس سفید، تاج طلایی
-- پرنس آرین: موهای بلوند، زره نقره‌ای، شنل سبز
-- هیچ نوشته یا کلمه‌ای در تصویر نباشد
-- شخصیت‌ها دقیقاً مانند فصل قبل باشند
-- سبک انیمیشنی و فانتزی
-
-Seed: {random.randint(10000, 999999)}
+Fantasy illustration, magical forest, cinematic lighting,
+storybook art, masterpiece, ultra detailed,
+beautiful faces, no text, no watermark.
 """
     
     encoded_prompt = requests.utils.quote(prompt)
     return f"{IMAGE_API}{encoded_prompt}?width=1024&height=1024"
 
 # ============================================
+# داستان پشتیبان (اگر Gemini کار نکرد)
+# ============================================
+def get_backup_story(chapter):
+    """داستان پشتیبان با ۱۰-۱۵ خط"""
+    
+    backup_stories = [
+        f"""🌿 فصل {chapter}: طلوع مه در جنگل نقره‌ای
+
+شب در جنگل نقره‌ای ساکت بود و مه غلیظی همه جا را پوشانده بود.
+لیا از خواب پرید و صدای زمزمه‌ای از دل جنگل شنید.
+آرین شمشیرش را برداشت و آماده نبرد شد.
+سیلونا نوری آبی در کف دستش روشن کرد و به جلو رفت.
+مورگان از اعماق تاریکی خندید و جنگل را لرزاند.
+لیا تاج طلایی‌اش را محکم گرفت و به سوی نور حرکت کرد.
+آرین فریاد زد: «همه آماده باشید! تاریکی نزدیک می‌شود.»
+سایه‌ها در میان درختان حرکت می‌کردند و مه را می‌شکافتند.
+لیا صدای دلش را دنبال کرد و راهی پیدا نمود.
+نور و تاریکی در میانه جنگل روبروی هم ایستادند.
+سرنوشت جنگل نقره‌ای در این شب رقم می‌خورد.
+لیا قدمی به جلو برداشت و قدرت درونش بیدار شد.
+همه در سکوت فرو رفتند و منتظر معجزه ماندند.
+نجات جنگل در دستان پرنسس لیا بود.`,
+        
+        f"""🌿 فصل {chapter}: راز درخت کهن
+
+باد سردی در میان شاخه‌های درخت کهن می‌وزید و زمزمه‌ای مرموز داشت.
+لیا زیر درخت ایستاد و نوری از تاجش به تنه درخت تابید.
+آرین با نگرانی اطراف را زیر نظر داشت و شمشیرش را آماده نگه داشت.
+سیلونا کتاب جادویی را باز کرد و جمله‌ای کهن را زمزمه نمود.
+ناگهان تنه درخت شکافته شد و پله‌هایی به سمت پایین ظاهر گردید.
+لیا اولین کسی بود که پا روی پله‌ها گذاشت و به اعماق رفت.
+آرین او را دنبال کرد و فریاد زد: «مراقب باش لیا!»
+در تاریکی، دو چشم قرمز براق نگاهشان را دنبال می‌کرد.
+مورگان از پشت ستون سنگی بیرون پرید و خندید.
+لیا با قدرت تاجش، نوری بزرگ منتشر کرد و تاریکی را عقب راند.
+مورگان عقب‌نشینی کرد و در تاریکی ناپدید شد.
+دروازه‌ای قدیمی در انتهای پله‌ها قرار داشت.
+لیا دستش را روی دروازه گذاشت و زمزمه‌ای کرد.
+دروازه به آرامی باز شد و نوری طلایی از آن بیرون زد.
+سرنوشت جدیدی در انتظار آنان بود.`,
+        
+        f"""🌿 فصل {chapter}: نبرد با سایه‌ها
+
+مه غلیظ‌تر از همیشه تمام جنگل را فراگرفته بود.
+لیا حس کرد تاریکی در حال نزدیک شدن است و قلبش تندتر زد.
+آرین سپر را بالا گرفت و مقابل لیا ایستاد.
+سیلونا طلسم محافظ را بر روی آنها خواند و نوری آبی درخشید.
+از میان مه، سایه‌هایی بی‌شکل با چشمان سرخ بیرون آمدند.
+لیا تاجش را بالا گرفت و نوری طلایی از آن ساطع شد.
+آرین با شمشیرش یکی از سایه‌ها را دو نیم کرد.
+سیلونا با عصایش حلقه‌ای آبی دور آنها کشید.
+سایه‌ها عقب‌نشینی کردند اما دوباره جمع شدند.
+لیا احساس کرد قدرت تاجش در حال کاهش است.
+ناگهان صدای کایرن از پشت سر شنیده شد: «به کمک من نیاز دارید!»
+کایرن با کمانش شروع به تیراندازی به سمت سایه‌ها کرد.
+آریا نیز پشت سر او آمد و نور سبز شفا را منتشر کرد.
+تاریکی کمکم شکست می‌خورد و مه کنار می‌رفت.
+لیا لبخندی زد و دانست که تنها نیست.`
+    ]
+    
+    return backup_stories[chapter % len(backup_stories)]
+
+# ============================================
 # ارسال به تلگرام
 # ============================================
 def send_photo(image_url, caption):
-    """ارسال تصویر به کانال تلگرام"""
     try:
         print("📥 دانلود تصویر...")
-        
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        }
-        
+        headers = {'User-Agent': 'Mozilla/5.0'}
         img = requests.get(image_url, headers=headers, timeout=120)
         
         if img.status_code != 200:
-            print(f"⚠️ خطا در دریافت تصویر: {img.status_code}")
-            
             simple_url = image_url.split("?")[0]
-            print("🔄 تلاش مجدد با URL ساده...")
             img = requests.get(simple_url, headers=headers, timeout=120)
-            
             if img.status_code != 200:
-                raise Exception(f"خطا در دریافت تصویر: {img.status_code}")
+                raise Exception(f"خطا: {img.status_code}")
         
         files = {"photo": ("story.jpg", img.content, "image/jpeg")}
-        
-        print("📤 ارسال به کانال تلگرام...")
         response = requests.post(
             SEND_PHOTO,
-            data={
-                "chat_id": CHANNEL,
-                "caption": caption,
-                "parse_mode": "Markdown"
-            },
+            data={"chat_id": CHANNEL, "caption": caption, "parse_mode": "Markdown"},
             files=files,
             timeout=120
         )
         
         if response.status_code != 200:
-            raise Exception(f"خطا در ارسال: {response.text[:200]}")
+            raise Exception(f"خطا: {response.text[:200]}")
         
-        print("✅ ارسال موفق به تلگرام!")
+        print("✅ ارسال موفق!")
         return True
         
     except Exception as e:
@@ -291,7 +324,7 @@ def get_previous_story():
                     for line in lines:
                         if line.strip() and not line.startswith("فصل") and not line.startswith("="):
                             story_lines.append(line)
-                    return "\n".join(story_lines[-5:])
+                    return "\n".join(story_lines[-8:])
         except:
             pass
     return ""
@@ -330,15 +363,28 @@ def send_post():
         print(f"📖 شروع فصل {chapter}")
         print(f"{'='*50}")
         
-        print("🤖 درخواست داستان از Gemini (رایگان)...")
+        print("🤖 درخواست داستان از Gemini 2.0 Flash...")
         story_text = generate_story_with_gemini(chapter, previous_story)
         
+        # اگر Gemini کار نکرد، از داستان پشتیبان استفاده کن
         if not story_text:
-            print("❌ تولید داستان ناموفق بود")
-            return False
+            print("⚠️ استفاده از داستان پشتیبان...")
+            story_text = get_backup_story(chapter)
         
-        print(f"✅ داستان تولید شد ({len(story_text)} کاراکتر)")
-        print(f"📝 متن: {story_text[:100]}...")
+        # بررسی نهایی تعداد خطوط
+        lines = [x for x in story_text.split("\n") if x.strip()]
+        if len(lines) < 10:
+            print(f"⚠️ داستان کوتاه بود ({len(lines)} خط)، اضافه کردن خطوط...")
+            extra_lines = [
+                "لیا به آسمان نگاه کرد و ستاره‌ها را شمارش نمود.",
+                "آرین کنار او ایستاد و دستش را روی شانه‌اش گذاشت.",
+                "سیلونا زمزمه‌ای کرد و مه کمی کنار رفت.",
+                "همه با هم به سمت نور حرکت کردند و امید در دلشان جوانه زد.",
+                "جنگل نقره‌ای رازهای زیادی در خود داشت."
+            ]
+            story_text = "\n".join(lines + extra_lines[:15-len(lines)])
+        
+        print(f"✅ داستان آماده شد ({len(story_text)} کاراکتر، {len(lines)} خط)")
         
         print("🎨 ساخت تصویر...")
         image_url = generate_image_from_story(story_text)
@@ -349,33 +395,27 @@ def send_post():
             save_chapter(chapter + 1)
             save_time()
             save_story_history(chapter, story_text)
-            
-            print(f"✅ فصل {chapter} با موفقیت ارسال شد!")
-            print(f"⏰ زمان: {datetime.now().strftime('%H:%M:%S')}")
-            print(f"📚 فصل بعدی: {chapter + 1}")
-            print("="*50)
+            print(f"✅ فصل {chapter} ارسال شد!")
         else:
-            print("❌ ارسال ناموفق بود")
+            print("❌ ارسال ناموفق")
         
         return success
         
     except Exception as e:
-        print(f"❌ خطای کلی: {e}")
+        print(f"❌ خطا: {e}")
         return False
 
 def main():
     print("="*60)
-    print("👑 PRINCESS STORY BOT - GEMINI VERSION")
-    print("📖 داستان‌سرای هوشمند جنگل نقره‌ای")
-    print("🤖 استفاده از Gemini (رایگان)")
+    print("👑 PRINCESS STORY BOT - GEMINI 2.0 FLASH")
+    print("📖 داستان‌سرای جنگل نقره‌ای")
+    print("🤖 با Gemini 2.0 Flash (رایگان)")
     print("⏰ هر ۱ ساعت یک فصل جدید")
-    print("📝 هر فصل ۱۰ تا ۱۵ خط")
+    print("📝 هر فصل ۱۰-۱۵ خط (اجباری)")
     print("♾️  داستان تا بینهایت ادامه دارد")
-    print("🎨 تصویرسازی با AI")
     print("="*60)
     
-    print("\n🌟 داستان جنگل نقره‌ای آغاز شد...")
-    print("🔄 هر ۱ ساعت یک فصل جدید ارسال می‌شود\n")
+    print("\n🌟 داستان جنگل نقره‌ای آغاز شد...\n")
     
     while True:
         try:
