@@ -5,14 +5,14 @@ import os
 from datetime import datetime
 
 # ============================================
-# تنظیمات اصلی
+# تنظیمات اصلی - با کلید شما
 # ============================================
 TELEGRAM_TOKEN = "8933933120:AAGO1Bn_zy_gWw3BriWdlajr5Er4Ks-0y0A"
 CHANNEL = "@princessnature9"
 
-# API Key دیپ‌سیک شما
-DEEPSEEK_API_KEY = "sk-2590c1abbc8a46899f78847709a98e6c"
-DEEPSEEK_URL = "https://api.deepseek.com/v1/chat/completions"
+# کلید Gemini شما (که الان درسته!)
+GEMINI_API_KEY = "AQ.Ab8RN6L-UALkIkX1sBNin-izfVDAHNzWfOVLIKOv8Re647Qb9Q"
+GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent"
 
 # ============================================
 # تنظیمات تلگرام
@@ -38,18 +38,16 @@ CHARACTERS = """
 - تاج برگ طلایی روی سر
 - گوش‌های باریک الف
 - پوست روشن و لطیف
-- همیشه لباس سفید و تاج طلایی می‌پوشد
 
 پرنس آرین:
 - موهای بلوند کوتاه
 - زره نقره‌ای با نگین‌های آبی
 - شنل سبز
 - چشم‌های آبی
-- هیکل ورزیده و بلند
 
 سیلونا (جادوگر الف):
 - موهای سفید بلند
-- چشم‌های آبی جادویی که می‌درخشند
+- چشم‌های آبی جادویی
 - ردای بنفش جادوگری
 - عصای بلورین
 
@@ -57,19 +55,16 @@ CHARACTERS = """
 - زره سیاه
 - چشم‌های قرمز براق
 - تاج سیاه
-- هاله تاریکی دورش
 
 الدور (جادوگر پیر):
 - الف پیر
 - ریش سفید بلند
 - ردای قهوه‌ای
-- عصای چوبی
 
 آریا (درمانگر):
 - الف درمانگر
 - موهای قهوه‌ای
 - ردای سبز شفابخش
-- چهره مهربان
 
 کایرن (جنگجو):
 - الف جنگجو
@@ -79,10 +74,10 @@ CHARACTERS = """
 """
 
 # ============================================
-# تولید داستان با DeepSeek AI
+# تولید داستان با Gemini (کاملاً رایگان)
 # ============================================
-def generate_story_with_deepseek(chapter, previous_story=""):
-    """تولید داستان جدید با DeepSeek AI"""
+def generate_story_with_gemini(chapter, previous_story=""):
+    """تولید داستان جدید با Gemini API - رایگان"""
     
     system_prompt = f"""تو یک نویسنده حرفه‌ای داستان‌های فانتزی و حماسی هستی.
 داستان "جنگل نقره‌ای" را می‌نویسی که یک حماسه فانتزی است.
@@ -98,10 +93,8 @@ def generate_story_with_deepseek(chapter, previous_story=""):
 ۶. داستان در جنگل نقره‌ای جریان دارد
 ۷. پرنسس لیا شخصیت اصلی است
 ۸. هر فصل جدید ادامه طبیعی فصل قبل است
-۹. از کلمات زیبا و توصیفی استفاده کن
-۱۰. فضا باید جادویی و رویایی باشد
-
-نکته: داستان بی‌پایان است و هر فصل ماجرای جدیدی دارد.
+۹. داستان بی‌پایان است و هر فصل ماجرای جدیدی دارد
+۱۰. از کلمات زیبا و توصیفی استفاده کن
 """
     
     user_prompt = f"""فصل {chapter} داستان جنگل نقره‌ای را بنویس.
@@ -117,49 +110,47 @@ def generate_story_with_deepseek(chapter, previous_story=""):
     if previous_story:
         user_prompt += f"\n\nداستان قبلی: {previous_story[:200]}..."
     
-    headers = {
-        "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    
+    # فرمت درخواست Gemini
     data = {
-        "model": "deepseek-chat",
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt}
-        ],
-        "temperature": 0.85,
-        "max_tokens": 600,
-        "top_p": 0.95
+        "contents": [{
+            "parts": [{
+                "text": f"{system_prompt}\n\n{user_prompt}"
+            }]
+        }],
+        "generationConfig": {
+            "temperature": 0.85,
+            "maxOutputTokens": 600,
+            "topP": 0.95
+        }
     }
     
     try:
-        print("🤖 درخواست به DeepSeek...")
-        response = requests.post(DEEPSEEK_URL, headers=headers, json=data, timeout=90)
+        print("🤖 درخواست به Gemini (رایگان)...")
+        response = requests.post(
+            GEMINI_URL,
+            headers={
+                "Content-Type": "application/json",
+                "X-goog-api-key": GEMINI_API_KEY  # کلید شما اینجا
+            },
+            json=data,
+            timeout=90
+        )
         
         if response.status_code == 200:
             result = response.json()
-            story = result["choices"][0]["message"]["content"]
+            story = result["candidates"][0]["content"]["parts"][0]["text"]
             print(f"✅ داستان تولید شد ({len(story)} کاراکتر)")
             return story
         else:
-            print(f"❌ خطا در DeepSeek: {response.status_code}")
+            print(f"❌ خطا در Gemini: {response.status_code}")
             print(f"پیام: {response.text}")
             
-            if response.status_code == 402:
-                print("⚠️ اعتبار حساب دیپ‌سیک تمام شده! لطفاً شارژ کنید.")
-                return None
-            
             if response.status_code == 429:
-                print("⚠️ تعداد درخواست‌ها زیاد است، ۳۰ ثانیه صبر کنید...")
-                time.sleep(30)
-                return generate_story_with_deepseek(chapter, previous_story)
+                print("⚠️ محدودیت روزانه Gemini تموم شده!")
+                return None
             
             return None
             
-    except requests.exceptions.Timeout:
-        print("❌ زمان درخواست به پایان رسید")
-        return None
     except Exception as e:
         print(f"❌ خطا: {e}")
         return None
@@ -275,7 +266,6 @@ def send_photo(image_url, caption):
 # مدیریت فایل‌ها
 # ============================================
 def get_chapter():
-    """دریافت شماره فصل فعلی"""
     if os.path.exists(LAST_CHAPTER):
         try:
             with open(LAST_CHAPTER, "r") as f:
@@ -285,12 +275,10 @@ def get_chapter():
     return 1
 
 def save_chapter(chapter):
-    """ذخیره شماره فصل"""
     with open(LAST_CHAPTER, "w") as f:
         f.write(str(chapter))
 
 def get_previous_story():
-    """دریافت داستان قبلی برای ادامه"""
     if os.path.exists(STORY_HISTORY):
         try:
             with open(STORY_HISTORY, "r", encoding="utf-8") as f:
@@ -309,7 +297,6 @@ def get_previous_story():
     return ""
 
 def save_story_history(chapter, story_text):
-    """ذخیره تاریخچه داستان"""
     try:
         with open(STORY_HISTORY, "a", encoding="utf-8") as f:
             f.write(f"\n{'='*50}\n")
@@ -321,7 +308,6 @@ def save_story_history(chapter, story_text):
         pass
 
 def should_send():
-    """بررسی زمان ارسال (هر ۱ ساعت)"""
     if not os.path.exists(LAST_TIME):
         return True
     try:
@@ -332,15 +318,10 @@ def should_send():
         return True
 
 def save_time():
-    """ذخیره زمان آخرین ارسال"""
     with open(LAST_TIME, "w") as f:
         f.write(str(int(time.time())))
 
-# ============================================
-# ارسال پست کامل
-# ============================================
 def send_post():
-    """ارسال یک پست کامل"""
     try:
         chapter = get_chapter()
         previous_story = get_previous_story()
@@ -349,8 +330,8 @@ def send_post():
         print(f"📖 شروع فصل {chapter}")
         print(f"{'='*50}")
         
-        print("🤖 درخواست داستان از DeepSeek...")
-        story_text = generate_story_with_deepseek(chapter, previous_story)
+        print("🤖 درخواست داستان از Gemini (رایگان)...")
+        story_text = generate_story_with_gemini(chapter, previous_story)
         
         if not story_text:
             print("❌ تولید داستان ناموفق بود")
@@ -361,7 +342,6 @@ def send_post():
         
         print("🎨 ساخت تصویر...")
         image_url = generate_image_from_story(story_text)
-        print(f"🔗 لینک تصویر: {image_url[:80]}...")
         
         success = send_photo(image_url, story_text)
         
@@ -383,30 +363,16 @@ def send_post():
         print(f"❌ خطای کلی: {e}")
         return False
 
-# ============================================
-# تابع اصلی
-# ============================================
 def main():
-    """حلقه اصلی ربات"""
     print("="*60)
-    print("👑 PRINCESS STORY BOT - AI VERSION")
+    print("👑 PRINCESS STORY BOT - GEMINI VERSION")
     print("📖 داستان‌سرای هوشمند جنگل نقره‌ای")
-    print("🤖 استفاده از DeepSeek AI")
+    print("🤖 استفاده از Gemini (رایگان)")
     print("⏰ هر ۱ ساعت یک فصل جدید")
     print("📝 هر فصل ۱۰ تا ۱۵ خط")
     print("♾️  داستان تا بینهایت ادامه دارد")
     print("🎨 تصویرسازی با AI")
     print("="*60)
-    
-    print(f"\n🔑 بررسی API Key: {DEEPSEEK_API_KEY[:10]}...")
-    
-    print("🔌 تست اتصال به DeepSeek...")
-    test_story = generate_story_with_deepseek(0)
-    if test_story:
-        print("✅ اتصال به DeepSeek برقرار است!")
-    else:
-        print("⚠️ اتصال به DeepSeek ناموفق بود")
-        print("   ممکن است اعتبار حساب تمام شده باشد")
     
     print("\n🌟 داستان جنگل نقره‌ای آغاز شد...")
     print("🔄 هر ۱ ساعت یک فصل جدید ارسال می‌شود\n")
@@ -437,8 +403,5 @@ def main():
             print(f"❌ خطای ناشناخته: {e}")
             time.sleep(60)
 
-# ============================================
-# اجرا
-# ============================================
 if __name__ == "__main__":
     main()
