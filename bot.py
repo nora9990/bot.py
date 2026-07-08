@@ -24,6 +24,7 @@ IMAGE_API = "https://image.pollinations.ai/prompt/"
 LAST_TIME = "last_time.txt"
 LAST_CHAPTER = "chapter.txt"
 STORY_HISTORY = "story_history.txt"
+USED_SEEDS = "used_seeds.txt"  # فایل برای ذخیره seedهای استفاده شده
 
 # ============================================
 # شخصیت‌های ثابت
@@ -72,6 +73,37 @@ CHARACTERS = """
 - زره چرمی
 - کمان و تیر
 """
+
+# ============================================
+# مدیریت Seedهای استفاده شده
+# ============================================
+def load_used_seeds():
+    """بارگذاری seedهای استفاده شده از فایل"""
+    if os.path.exists(USED_SEEDS):
+        try:
+            with open(USED_SEEDS, "r") as f:
+                return set(int(line.strip()) for line in f if line.strip())
+        except:
+            return set()
+    return set()
+
+def save_used_seed(seed):
+    """ذخیره seed استفاده شده در فایل"""
+    try:
+        with open(USED_SEEDS, "a") as f:
+            f.write(f"{seed}\n")
+    except:
+        pass
+
+def get_unique_seed(chapter, used_seeds):
+    """تولید seed منحصر‌به‌فرد که قبلاً استفاده نشده باشد"""
+    max_attempts = 100
+    for _ in range(max_attempts):
+        seed = chapter * 1000 + random.randint(1, 999)
+        if seed not in used_seeds:
+            return seed
+    # اگر همه seedها استفاده شده بودند، از زمان استفاده کن
+    return int(time.time()) % 1000000
 
 # ============================================
 # تولید داستان با Gemini 2.0 Flash
@@ -174,7 +206,7 @@ def generate_story_with_gemini(chapter, previous_story="", attempt=1):
         return None
 
 # ============================================
-# داستان پشتیبان (با ۱۰-۱۵ خط)
+# داستان پشتیبان
 # ============================================
 def get_backup_story(chapter):
     """داستان پشتیبان با ۱۰-۱۵ خط"""
@@ -237,29 +269,44 @@ def get_backup_story(chapter):
     return backup_stories[chapter % len(backup_stories)]
 
 # ============================================
-# تولید تصویر
+# تولید تصویر با پرامپت جدید و بدون تکرار
 # ============================================
-def generate_image_from_story(story_text):
-    """تولید تصویر با پرامپت جدید"""
+def generate_image_from_story(story_text, chapter):
+    """تولید تصویر با پرامپت جدید و بدون تکرار"""
     
-    scene = "Princess Lia and Prince Arian inside an enchanted silver forest during a magical adventure."
+    # بارگذاری seedهای استفاده شده
+    used_seeds = load_used_seeds()
     
+    # تولید seed منحصر‌به‌فرد
+    seed = get_unique_seed(chapter, used_seeds)
+    
+    # ذخیره seed استفاده شده
+    save_used_seed(seed)
+    
+    # گرفتن کل داستان و تبدیل به یک خط
+    scene = story_text.replace("\n", " ")[:800]
+
     prompt = f"""
-Beautiful elven princess Lia, long silver hair, emerald green eyes,
-white royal elven dress with golden embroidery,
-golden leaf crown.
+Epic fantasy scene from chapter {chapter} of a long fantasy novel.
 
-Prince Arian, blond hair, silver armor, green cape.
+Main character: Princess Lia - silver hair to waist, emerald green eyes, white elven dress with golden embroidery, golden leaf crown.
+Characters may appear only if they exist in this chapter.
 
+The exact event happening in this chapter:
 {scene}
 
-Fantasy illustration, magical forest, cinematic lighting,
-storybook art, masterpiece, ultra detailed,
-beautiful faces, no text, no watermark.
+Create a cinematic story illustration, not a character portrait.
+Focus on action, environment, emotions and movement.
+
+Every chapter must have a completely unique composition.
+Different location, different camera angle, different lighting, different poses and different atmosphere.
+Never repeat previous scenes.
+
+Enchanted silver forest fantasy world, high quality fantasy artwork, cinematic lighting, detailed faces, no text, no watermark.
 """
-    
+
     encoded_prompt = requests.utils.quote(prompt)
-    return f"{IMAGE_API}{encoded_prompt}?width=1024&height=1024"
+    return f"{IMAGE_API}{encoded_prompt}?width=1024&height=1024&seed={seed}&t={int(time.time())}"
 
 # ============================================
 # ارسال به تلگرام
@@ -272,20 +319,29 @@ def send_photo(image_url, caption):
         
         if img.status_code != 200:
             simple_url = image_url.split("?")[0]
+            print("🔄 تلاش مجدد با URL ساده...")
             img = requests.get(simple_url, headers=headers, timeout=120)
             if img.status_code != 200:
-                raise Exception(f"خطا: {img.status_code}")
+                raise Exception(f"خطا در دریافت تصویر: {img.status_code}")
         
-        files = {"photo": ("story.jpg", img.content, "image/jpeg")}
+        # نام فایل با زمان برای جلوگیری از تکرار
+        filename = f"story_{int(time.time())}.jpg"
+        files = {"photo": (filename, img.content, "image/jpeg")}
+        
+        print("📤 ارسال به کانال تلگرام...")
         response = requests.post(
             SEND_PHOTO,
-            data={"chat_id": CHANNEL, "caption": caption, "parse_mode": "Markdown"},
+            data={
+                "chat_id": CHANNEL,
+                "caption": caption,
+                "parse_mode": "Markdown"
+            },
             files=files,
             timeout=120
         )
         
         if response.status_code != 200:
-            raise Exception(f"خطا: {response.text[:200]}")
+            raise Exception(f"خطا در ارسال: {response.text[:200]}")
         
         print("✅ ارسال موفق!")
         return True
@@ -365,12 +421,10 @@ def send_post():
         print("🤖 درخواست داستان از Gemini 2.0 Flash...")
         story_text = generate_story_with_gemini(chapter, previous_story)
         
-        # اگر Gemini کار نکرد، از داستان پشتیبان استفاده کن
         if not story_text:
             print("⚠️ استفاده از داستان پشتیبان...")
             story_text = get_backup_story(chapter)
         
-        # بررسی نهایی تعداد خطوط
         lines = [x for x in story_text.split("\n") if x.strip()]
         if len(lines) < 10:
             print(f"⚠️ داستان کوتاه بود ({len(lines)} خط)، اضافه کردن خطوط...")
@@ -387,7 +441,8 @@ def send_post():
         print(f"✅ داستان آماده شد ({len(story_text)} کاراکتر، {len(lines)} خط)")
         
         print("🎨 ساخت تصویر...")
-        image_url = generate_image_from_story(story_text)
+        image_url = generate_image_from_story(story_text, chapter)
+        print(f"🔗 Seed تصویر: {image_url.split('seed=')[-1].split('&')[0] if 'seed=' in image_url else 'نامشخص'}")
         
         success = send_photo(image_url, story_text)
         
@@ -412,6 +467,12 @@ def main():
     print("🤖 با Gemini 2.0 Flash (رایگان)")
     print("⏰ هر ۱ ساعت یک فصل جدید")
     print("📝 هر فصل ۱۰-۱۵ خط (اجباری)")
+    print("🎨 تصاویر منحصر‌به‌فرد با Seed = chapter*1000 + random")
+    print("🔄 بررسی عدم تکرار Seed")
+    print("📸 نام فایل: story_زمان.jpg")
+    print("🔄 تگ زمان در URL برای جلوگیری از کش")
+    print("📖 کل داستان وارد پرامپت تصویر می‌شود")
+    print("🎭 تأکید بر صحنه، نه پرتره")
     print("♾️  داستان تا بینهایت ادامه دارد")
     print("="*60)
     
